@@ -1,0 +1,3 @@
+public enum Methods {
+    GET,PUT,DELETE,HEAD,OPTIONS,POST,PATCH,UNKNOWN;
+}
