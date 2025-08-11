@@ -3,8 +3,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.Scanner;
 
-public class Main {
-    private static File path;
+public class Main{
 
     public static void main(String[] args) throws CheсkLongLineException{
         // Выводим последовательно 2 числа в консоль
@@ -44,17 +43,18 @@ public class Main {
             count++;
             System.out.println("Общее количество верных путей: " + count);
 
-            // --- НАЧИНАЕМ ЧТЕНИЕ ФАЙЛА ---
-            try {
-                FileReader fileReader = new FileReader(path);
-                BufferedReader reader = new BufferedReader(fileReader);
+            // --- ЧТЕНИЕ ФАЙЛА ---
+            try (FileReader fileReader=new FileReader(file);
+                 BufferedReader reader=new BufferedReader(fileReader)) {
 
                 String line;
-                int totalLenght=0;
-                int minLenght=0;
+                int minLenght=Integer.MAX_VALUE;
                 int maxLenght=0;
+                int totalReq=0;
+                int googleBotCount=0;
+                int yandexBotCount=0;
 
-                while ((line = reader.readLine()) != null) {
+                while ((line=reader.readLine())!=null) {
                     int length = line.length();
 
                     // Проверка на длину строки 1024
@@ -63,20 +63,46 @@ public class Main {
                     }
                     // Проверка на самую короткую строку
                     if (length<minLenght) {
-                        maxLenght=length;
+                        minLenght=length;
                     }
                     // Проверка на самую длинную строку
                     if (length>maxLenght) {
                         maxLenght=length;
                     }
 
-                    totalLenght++;
+                    totalReq++;
+
+                    // Извлечение User-Agent
+                    int lastQuote=line.lastIndexOf("\"");
+                    int secondLastQuote=line.lastIndexOf("\"", lastQuote - 1);
+
+                    String userAgent=line.substring(secondLastQuote + 1, lastQuote);
+                    String fragment=parseUserAgent(userAgent);
+
+                    if (fragment!=null) {
+                        if (isGoogleBot(fragment)) {
+                            googleBotCount++;
+                        } else if (isYandexBot(fragment)) {
+                            yandexBotCount++;
+                        }
+                    }
                 }
 
+                // Вывод статистики
+                System.out.println("Общее количество строк в файле: "+totalReq);
                 System.out.println("Длина самой короткой строки в файле: "+minLenght);
                 System.out.println("Длина самой длинной строки в файле: "+maxLenght);
-                System.out.println("Общее количество строк в файле: "+totalLenght++);
 
+                // Вывод доли ботов
+                if (totalReq > 0) {
+                    double googlePercent=(double)googleBotCount/totalReq*100;
+                    double yandexPercent=(double)yandexBotCount/totalReq*100;
+
+                    System.out.println("Доля запросов от Googlebot: "+(googlePercent)+"%");
+                    System.out.println("Доля запросов от Googlebot: "+(yandexPercent)+"%");
+                } else {
+                    System.out.println("Файл пустой");
+                }
 
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -86,8 +112,31 @@ public class Main {
         }
     }
 
-    // Собственный класс исключения
-    static class CheсkLongLineException extends RuntimeException{
+    // Метод для извлечения фрагмента из User-Agent
+    private static String parseUserAgent(String userAgent) {
+        int start=userAgent.indexOf('(');
+        int end=userAgent.indexOf(')');
+        if (start==-1||end==-1) return null;
+
+        String firstBrackets=userAgent.substring(start + 1, end);
+        String[] parts=firstBrackets.split(";");
+        if (parts.length>=2) {
+            return parts[1].trim();
+        }
+        return null;
+    }
+
+    // Проверка бота
+    private static boolean isGoogleBot(String botName) {
+        return botName.contains("Googlebot");
+    }
+
+    private static boolean isYandexBot(String botName) {
+        return botName.contains("YandexBot");
+    }
+
+    // Собственное исключение
+    static class CheсkLongLineException extends RuntimeException {
         public CheсkLongLineException(String message) {
             super(message);
         }
