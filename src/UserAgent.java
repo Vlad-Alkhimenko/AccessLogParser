@@ -1,10 +1,12 @@
 public class UserAgent {
     private final String os;
     private final String browser;
+    private final boolean isBot; // Добавим поиск по боту
 
     public UserAgent(String userAgentStr) {
         this.os=parseOS(userAgentStr);
         this.browser=parseBrowser(userAgentStr);
+        this.isBot=userAgentStr.toLowerCase().contains("bot");
     }
 
     // Геттеры
@@ -14,6 +16,10 @@ public class UserAgent {
 
     public String getBrowser() {
         return browser;
+    }
+
+    public boolean isBot() {
+        return isBot;
     }
 
     // Определяем ОС по ключевым словам
