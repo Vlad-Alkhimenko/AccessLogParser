@@ -4,19 +4,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-// В классе Statistics реализуйте метод, который будет возвращать список всех существующих страниц сайта.
-// Для этого создайте в классе переменную класса HashSet. В эту переменную при выполнении метода addEntry добавляйте
-// адреса существующих страниц (с кодом ответа 200) сайта.
-// В классе Statistics также реализуйте метод, который будет возвращать статистику операционных систем пользователей сайта.
-// Для этого создайте в классе переменную класса HashMap<String, Integer>, в которой подсчитывайте частоту
-// встречаемости каждой операционной системы.
-// При выполнении метода addEntry проверяйте, есть ли в этом HashMap запись с такой операционной системой. Если нет,
-// вставляйте такую запись. Если есть, добавляйте к соответствующему значению единицу. В итоге получится HashMap, ключи
-// которого будут названиями операционных систем, а значения — их количествами в лог-файле.
-// Метод в результате должен создавать новый HashMap<String, Double> и в качестве ключей рассчитывать долю для каждой
-// операционной системы (от 0 до 1). Чтобы рассчитать долю конкретной операционной системы, нужно разделить количество
-// конкретной операционной системы на общее количество для всех операционных систем.
-
 public class Statistics {
     private int totalTraffic;
     private LocalDateTime minTime;
@@ -24,6 +11,9 @@ public class Statistics {
 
     private HashSet<String> pages=new HashSet<>(); // Список страниц
     private HashMap<String,Integer> countOs=new HashMap<>(); // Статистика операционных систем пользователей сайта
+
+    private HashSet<String> pagesNot=new HashSet<>(); // Список страниц c кодом 404
+    private HashMap<String,Integer> countBrowser=new HashMap<>(); // Статистика браузеров
 
     // Конструктор без параметров
     public Statistics() {
@@ -57,6 +47,15 @@ public class Statistics {
         // Считаем ОС
         String os=entry.getUserAgent().getOs();
         countOs.put(os,countOs.getOrDefault(os,0)+1);
+
+        // Добавляем страницу, если код 404
+        if (entry.getResponseCode()==404) {
+            pagesNot.add(entry.getPath());
+        }
+
+        // Считаем Браузеры
+        String browser=entry.getUserAgent().getBrowser();
+        countBrowser.put(browser,countBrowser.getOrDefault(browser,0)+1);
     }
 
     // Метод для расчёта среднего трафика в час
@@ -100,6 +99,36 @@ public class Statistics {
         // Cчитаем долю count/total
         for (String os:countOs.keySet()) {
             int count=countOs.get(os);
+            double fraction=(double) count/total;
+            res.put(os,fraction);
+        }
+        return res;
+    }
+
+    // Получить список страниц (с кодом 404)
+    public Set<String> getErrorPages() {
+        Set<String> res=new HashSet<>();
+        for (String page:pagesNot) {
+            res.add(page);
+        }
+        return res;
+    }
+
+    // Метод: статистика ОС в долях (от 0 до 1)
+    public Map<String,Double> getBrowserStatistics() {
+        Map<String,Double> res=new HashMap<>();
+
+        int total=0;
+        for (int count:countBrowser.values()) {
+            total+=count;
+        }
+        if (total==0) {
+            return res;
+        }
+
+        // Cчитаем долю count/total
+        for (String os:countBrowser.keySet()) {
+            int count=countBrowser.get(os);
             double fraction=(double) count/total;
             res.put(os,fraction);
         }
