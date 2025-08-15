@@ -19,6 +19,11 @@ public class Statistics {
     private int errorCount=0; // Количество ошибочных ответов 4xx,5xx
     private Set<String> uniqueIpUsers=new HashSet<>(); // Уникальные IP обычных пользователей
 
+    private HashMap<Integer,Integer> countVisitSecond=new HashMap<>(); // Секунда и кол-во посещений
+    private LocalDateTime startTime; // Для подсчёта секунды
+    private HashSet<String> countRefers=new HashSet<>(); //  Подсчет для referov
+    private HashMap<String,Integer> countVisitUser=new HashMap<>(); // Подсчет по ip юзера
+
     // Конструктор без параметров
     public Statistics() {
         this.totalTraffic = 0;
@@ -41,6 +46,10 @@ public class Statistics {
         }
         else if (current.isAfter(maxTime)) {
             maxTime=current;
+        }
+
+        if (startTime==null){
+            startTime=entry.getDateTime();
         }
 
         // Добавляем страницу, если код 200
@@ -68,12 +77,56 @@ public class Statistics {
         if (isRealUser) {
             userCount++;
             uniqueIpUsers.add(entry.getIp());
+
+            // Считаем, сколько раз заходит каждый пользователь
+            String ip=entry.getIp();
+            if (countVisitUser.containsKey(ip)) {
+                int oldCount=countVisitUser.get(ip);
+                countVisitUser.put(ip, oldCount + 1);
+            } else {
+                countVisitUser.put(ip, 1);
+            }
+
+            // Подсчет секунды с начала
+            long secStart=java.time.Duration.between(startTime,entry.getDateTime()).getSeconds();
+
+            if (secStart<=Integer.MAX_VALUE&&secStart>=Integer.MIN_VALUE){
+                int sec=(int) secStart;
+
+                // Обновляем счетчик посещений в сек.
+                if (countVisitSecond.containsKey(sec)) {
+                    int count=countVisitSecond.get(sec);
+                    countVisitSecond.put(sec,count+1);
+                } else {
+                    countVisitSecond.put(sec,1);
+                }
+            }
+
+
         }
 
         // Считаем ошибки (4xx и 5xx)
         int code=entry.getResponseCode();
         if (code>=400&&code<600) {
             errorCount++;
+        }
+
+        // Проверяем откуда пришел пользователь
+        String referer=entry.getReferer();
+        if (!referer.equals("-")) {
+            // Удаляем http://
+            if (referer.startsWith("http://")) {
+                referer=referer.substring(7);
+            }
+
+            // Удаляем www.
+            if (referer.startsWith("www.")) {
+                referer=referer.substring(4);
+            }
+
+            // Оставляем доменное имя
+            String domain=referer.split("/")[0].split(":")[0];
+            countRefers.add(domain);
         }
     }
 
@@ -180,6 +233,40 @@ public class Statistics {
             return 0.0;
         }
         return (double) userCount/ uniqueIpUsers.size();
+    }
+
+    // Метод для пиковой посещаемости
+    public int getVisitsSec(){
+        if (countVisitSecond.isEmpty()) {
+            return 0;
+        }
+        int max=0;
+        for (int count:countVisitSecond.values()){
+            if (count>max) {
+                max=count;
+            }
+        }
+        return max;
+    }
+
+    // Метод для получения списка доменов
+    public Set<String> getReferrer() {
+        return new HashSet<>(countRefers); // возвращаем копию
+    }
+
+    // Метод для получения максимума
+    public int getMaxVisitUser() {
+        if (countVisitUser.isEmpty()) {
+            return 0;
+        }
+
+        int max=0;
+        for (int count:countVisitUser.values()) {
+            if (count>max) {
+                max=count;
+            }
+        }
+        return max;
     }
 
 }
